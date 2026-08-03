@@ -1,0 +1,39 @@
+{
+  "name": "self-healing-distributed-cache",
+  "version": "1.0.0",
+  "description": "Self-healing distributed cache with consistent hashing, gossip protocol, and zero-downtime rebalancing",
+  "main": "dist/node/CacheNode.js",
+  "scripts": {
+    "build": "tsc",
+    "dev:node": "tsx src/node/CacheNode.ts",
+    "start:node1": "cross-env NODE_ID=node-1 NODE_PORT=3001 NODE_GOSSIP_PORT=4001 SEED_PORT=3001 tsx src/node/CacheNode.ts",
+    "start:node2": "cross-env NODE_ID=node-2 NODE_PORT=3002 NODE_GOSSIP_PORT=4002 SEED_PORT=3001 tsx src/node/CacheNode.ts",
+    "start:node3": "cross-env NODE_ID=node-3 NODE_PORT=3003 NODE_GOSSIP_PORT=4003 SEED_PORT=3001 tsx src/node/CacheNode.ts",
+    "start:cluster": "concurrently \"npm run start:node1\" \"npm run start:node2\" \"npm run start:node3\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "load-test": "tsx scripts/load-test.ts",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "msgpackr": "^1.10.1",
+    "murmurhash3js": "^3.0.1",
+    "pino": "^9.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "cross-env": "^7.0.3",
+    "@types/node": "^20.14.2",
+    "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.5",
+    "tsx": "^4.15.6",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
