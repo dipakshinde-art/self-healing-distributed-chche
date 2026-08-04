@@ -85,3 +85,13 @@ export interface MigrationBatch {
   sourceNodeId: string;
   targetNodeId: string;
 }
+
+// Sent by a joining node to the seed's /internal/join route
+export interface JoinRequest {
+  entry: MembershipEntry;
+}
+
+// Seed's reply: full membership list, so the joiner can populate its ring in one round trip
+export interface JoinResponse {
+  members: MembershipEntry[];
+}

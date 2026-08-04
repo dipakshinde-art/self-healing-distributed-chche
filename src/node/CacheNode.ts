@@ -1,5 +1,7 @@
+import http from "http";
 import { loadConfig } from "../../config/cluster.config";
 import { CacheStore } from "../storage/CacheStore";
+import { createEvictionTracker } from "../storage/EvictionPolicy";
 import { TTLEngine } from "../ttl/TTLEngine";
 import { HashRing } from "../hashing/HashRing";
 import { MembershipList } from "../gossip/MembershipList";
@@ -9,6 +11,14 @@ import { ReplicationManager } from "../replication/ReplicationManager";
 import { KeyMigrator } from "../replication/KeyMigrator";
 import { NodeServer } from "./NodeServer";
 import { createLogger } from "../utils/logger";
+import { withRetry } from "../utils/retry";
+import { JoinRequest, JoinResponse, MembershipEntry } from "../types";
+
+// Cluster bootstrap races against the seed node's own startup (all nodes are
+// spawned concurrently by `npm run start:cluster`), so retry generously —
+// this is unrelated to the client-facing MAX_RETRIES/RETRY_DELAY_MS config.
+const JOIN_MAX_RETRIES = 20;
+const JOIN_RETRY_DELAY_MS = 500;
 
 async function main() {
   const cfg = loadConfig();
@@ -23,6 +33,8 @@ async function main() {
   // Cluster ring + membership
   const ring = new HashRing(cfg.vnodeCount);
   const membership = new MembershipList();
+  const migrator = new KeyMigrator(store, cfg.nodeId, logger);
+  const eviction = createEvictionTracker(cfg.evictionPolicy);
 
   // Register self
   membership.add({
@@ -55,7 +67,6 @@ async function main() {
       logger.info({ nodeId }, "Re-adding recovered node to ring");
       ring.addNode(entry);
       // Trigger key migration back to rejoining node
-      const migrator = new KeyMigrator(store, cfg.nodeId, logger);
       const myKeys = store.keys();
       const keysForNode = ring.getKeysForNode(myKeys, nodeId);
       if (keysForNode.length > 0) {
@@ -88,6 +99,9 @@ async function main() {
     ring,
     replication,
     cfg.replicationFactor,
+    membership,
+    migrator,
+    eviction,
     logger
   );
 
@@ -113,14 +127,71 @@ async function main() {
   });
 }
 
+// Joiner's side of cluster bootstrap: send our own membership entry to the
+// seed's /internal/join, then adopt every peer it hands back into our own
+// membership list + ring. Retries with backoff since the seed may not be
+// listening yet (all nodes are spawned concurrently by start:cluster).
 async function joinSeedNode(
   cfg: ReturnType<typeof loadConfig>,
   ring: HashRing,
   membership: MembershipList,
   logger: ReturnType<typeof createLogger>
-) {
-  // TODO Phase 3: send JOIN request to seed node, receive full membership list
+): Promise<void> {
   logger.info({ seedHost: cfg.seedHost, seedPort: cfg.seedPort }, "Joining cluster via seed node");
+
+  const self = membership.get(cfg.nodeId)!;
+  const response = await withRetry(
+    () => sendJoinRequest(cfg.seedHost, cfg.seedPort, self),
+    JOIN_MAX_RETRIES,
+    JOIN_RETRY_DELAY_MS
+  );
+
+  for (const member of response.members) {
+    if (member.nodeId === cfg.nodeId) continue;
+    membership.add(member);
+    ring.addNode(member);
+  }
+
+  logger.info({ peers: response.members.length - 1 }, "Joined cluster");
+}
+
+function sendJoinRequest(host: string, port: number, entry: MembershipEntry): Promise<JoinResponse> {
+  const body = JSON.stringify({ entry } satisfies JoinRequest);
+
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        host,
+        port,
+        path: "/internal/join",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+        timeout: 5000,
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          if (res.statusCode !== 200) return reject(new Error(`Join failed: HTTP ${res.statusCode}`));
+          try {
+            resolve(JSON.parse(data) as JoinResponse);
+          } catch (err) {
+            reject(err as Error);
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Join request timed out"));
+    });
+    req.write(body);
+    req.end();
+  });
 }
 
 main().catch((err) => {

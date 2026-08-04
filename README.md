@@ -173,12 +173,12 @@ requests — this is the project's core proof-of-concept.
 
 ## Core requirements (in progress)
 
-- [ ] Multi-node cluster — independent processes forming one logical cache
-- [ ] Consistent hashing with virtual nodes (not modulo hashing)
-- [ ] Replication with configurable replication factor
-- [ ] Automatic failure detection via gossip (`ALIVE` → `SUSPECT` → `DEAD`)
-- [ ] Zero-downtime rebalancing on node join/rejoin
-- [ ] TTL expiry honored consistently across replicas
+- [x] Multi-node cluster — independent processes forming one logical cache
+- [x] Consistent hashing with virtual nodes (not modulo hashing)
+- [x] Replication with configurable replication factor
+- [x] Automatic failure detection via gossip (`ALIVE` → `SUSPECT` → `DEAD`)
+- [x] Zero-downtime rebalancing on node join/rejoin
+- [x] TTL expiry honored consistently across replicas
 - [ ] Survive a live node kill mid-traffic with zero failed requests
 
 ### Stretch goals
