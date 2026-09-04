@@ -74,6 +74,10 @@ scripts/             load-test.ts — concurrent SET/GET load generator
 
 ## Getting started
 
+> For a complete, standalone walkthrough (setup, every env var explained,
+> the live node-kill demo, and architecture diagrams) see
+> **[HOW_TO_RUN.md](HOW_TO_RUN.md)**.
+
 ### Prerequisites
 
 - Node.js v20+
