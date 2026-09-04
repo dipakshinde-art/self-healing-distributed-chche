@@ -8,8 +8,13 @@ export class ReplicationManager {
     private logger: Logger
   ) {}
 
-  // Fire-and-forget async replication to replica nodes
-  async replicateToNodes(entry: CacheEntry, replicas: MembershipEntry[]): Promise<void> {
+  // Replicates to every replica and reports how many acked — callers that
+  // don't care (eventual mode) just ignore the result and let this resolve
+  // in the background; callers that need a quorum (strong mode) await it.
+  async replicateToNodes(
+    entry: CacheEntry,
+    replicas: MembershipEntry[]
+  ): Promise<{ acked: number; attempted: number }> {
     const payload: ReplicationPayload = {
       key: entry.key,
       entry,
@@ -18,13 +23,17 @@ export class ReplicationManager {
 
     const body = JSON.stringify(payload);
 
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       replicas.map((replica) =>
         this.sendReplication(replica, body).catch((err) => {
           this.logger.warn({ replica: replica.nodeId, err }, "Replication failed");
+          throw err;
         })
       )
     );
+
+    const acked = results.filter((r) => r.status === "fulfilled").length;
+    return { acked, attempted: replicas.length };
   }
 
   private sendReplication(replica: MembershipEntry, body: string): Promise<void> {
@@ -40,6 +49,10 @@ export class ReplicationManager {
             "Content-Length": Buffer.byteLength(body),
           },
           timeout: 2000,
+          // Never reuse a pooled keep-alive socket: a replica that died and
+          // came back on the same port must be reached by a fresh connection,
+          // not a stale one left in the agent's pool.
+          agent: false,
         },
         (res) => {
           res.resume(); // drain response

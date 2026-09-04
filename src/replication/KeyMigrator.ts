@@ -2,8 +2,11 @@ import http from "http";
 import { CacheEntry, MembershipEntry, MigrationBatch } from "../types";
 import { CacheStore } from "../storage/CacheStore";
 import { Logger } from "../utils/logger";
+import { withRetry } from "../utils/retry";
 
 const BATCH_SIZE = 100;
+const BATCH_MAX_RETRIES = 3;
+const BATCH_RETRY_DELAY_MS = 200;
 
 export class KeyMigrator {
   constructor(
@@ -22,7 +25,7 @@ export class KeyMigrator {
 
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE);
-      await this.sendBatch(batch, target);
+      await withRetry(() => this.sendBatch(batch, target), BATCH_MAX_RETRIES, BATCH_RETRY_DELAY_MS);
 
       // Delete migrated keys from this node after confirmed receipt
       for (const entry of batch) {
@@ -56,6 +59,7 @@ export class KeyMigrator {
             "Content-Length": Buffer.byteLength(body),
           },
           timeout: 10000,
+          agent: false, // avoid a stale pooled socket to a node that restarted on the same port
         },
         (res) => {
           res.resume();

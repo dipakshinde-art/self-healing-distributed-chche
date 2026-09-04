@@ -22,7 +22,7 @@ describe("CacheStore", () => {
 
   it("evicts expired keys on read (lazy eviction)", () => {
     jest.useFakeTimers();
-    store.set("temp", "value", 1); // 1 second TTL
+    store.set("temp", "value", 1000); // 1 second TTL
 
     jest.advanceTimersByTime(2000); // 2 seconds later
 
@@ -32,7 +32,7 @@ describe("CacheStore", () => {
 
   it("returns value before TTL expires", () => {
     jest.useFakeTimers();
-    store.set("temp", "value", 10); // 10 second TTL
+    store.set("temp", "value", 10000); // 10 second TTL
 
     jest.advanceTimersByTime(5000); // 5 seconds later
 
@@ -53,9 +53,9 @@ describe("CacheStore", () => {
 
   it("purgeExpired removes all expired keys", () => {
     jest.useFakeTimers();
-    store.set("a", 1, 1);
-    store.set("b", 2, 1);
-    store.set("c", 3, 100); // long TTL
+    store.set("a", 1, 1000);
+    store.set("b", 2, 1000);
+    store.set("c", 3, 100000); // long TTL
 
     jest.advanceTimersByTime(2000);
 

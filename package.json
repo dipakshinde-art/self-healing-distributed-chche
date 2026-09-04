@@ -14,9 +14,11 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "load-test": "tsx scripts/load-test.ts",
-    "lint": "eslint src --ext .ts"
+    "kill-node": "tsx scripts/kill-node.ts",
+    "cli": "tsx src/cli/cli.ts"
   },
   "dependencies": {
+    "commander": "^12.1.0",
     "dotenv": "^16.4.5",
     "msgpackr": "^1.10.1",
     "murmurhash3js": "^3.0.1",

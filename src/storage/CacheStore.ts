@@ -4,11 +4,11 @@ export class CacheStore {
   private store = new Map<string, CacheEntry>();
   private version = 0;
 
-  set(key: string, value: string | number | Buffer, ttlSeconds?: number, nodeId = "local"): CacheEntry {
+  set(key: string, value: string | number | Buffer, ttlMs?: number, nodeId = "local"): CacheEntry {
     const entry: CacheEntry = {
       key,
       value,
-      expiresAt: ttlSeconds ? Date.now() + ttlSeconds * 1000 : null,
+      expiresAt: ttlMs ? Date.now() + ttlMs : null,
       version: ++this.version,
       nodeId,
       createdAt: Date.now(),
@@ -56,6 +56,18 @@ export class CacheStore {
 
   size(): number {
     return this.store.size;
+  }
+
+  // Rough heuristic, not an exact accounting — good enough to compare against
+  // EVICTION_THRESHOLD_MB without pulling in a real memory profiler.
+  estimateSizeBytes(): number {
+    let total = 0;
+    for (const [key, entry] of this.store) {
+      total += key.length * 2;
+      const value = entry.value;
+      total += Buffer.isBuffer(value) ? value.byteLength : String(value).length * 2;
+    }
+    return total;
   }
 
   // Purge all expired keys — called by TTLEngine on a sweep

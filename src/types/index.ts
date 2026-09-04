@@ -37,7 +37,7 @@ export interface VNode {
 }
 
 export interface SetOptions {
-  ttl?: number; // seconds
+  ttl?: number; // milliseconds
   consistency?: ConsistencyMode;
 }
 
@@ -61,9 +61,11 @@ export interface NodeConfig {
   ttlSweepIntervalMs: number;
   evictionPolicy: EvictionPolicy;
   evictionThresholdMb: number;
+  evictionSweepIntervalMs: number;
   maxRetries: number;
   retryDelayMs: number;
   logLevel: string;
+  forwardTimeoutMs: number;
 }
 
 export interface ClusterMetrics {

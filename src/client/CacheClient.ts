@@ -4,7 +4,17 @@ import { MembershipList } from "../gossip/MembershipList";
 import { MembershipEntry, SetOptions, GetOptions } from "../types";
 import { withRetry } from "../utils/retry";
 
-// Public-facing SDK: routes requests to the correct cluster node
+// Public-facing SDK: routes requests to the correct cluster node.
+//
+// Currently unused/unwired: it needs a live, gossip-synced HashRing +
+// MembershipList, and nothing in the runnable paths (start:cluster,
+// load-test) constructs or feeds it one. NodeServer's own server-side
+// forwarding (see NodeServer.forwardGet/forwardSet/forwardDelete) now makes
+// every node a correct entry point regardless of who owns a key, which is
+// what actually gives load-test.ts and the CLI their routing correctness —
+// so a plain retrying HTTP client hitting any node is enough; building a
+// second, client-side copy of ring-aware routing here would just duplicate
+// that logic for a latency-only (not correctness) benefit.
 export class CacheClient {
   constructor(
     private ring: HashRing,

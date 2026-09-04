@@ -16,7 +16,7 @@ export class ClusterManager {
   private processes = new Map<string, ChildProcess>();
 
   constructor(
-    private scriptPath: string, // path to compiled CacheNode.js
+    private scriptPath: string, // path to src/node/CacheNode.ts, run via the local tsx binary
     private logger: Logger
   ) {}
 
@@ -31,7 +31,14 @@ export class ClusterManager {
       SEED_PORT: String(config.seedPort),
     };
 
-    const child = spawn(process.execPath, [this.scriptPath], {
+    const tsxBin = path.join(
+      process.cwd(),
+      "node_modules",
+      ".bin",
+      process.platform === "win32" ? "tsx.cmd" : "tsx"
+    );
+
+    const child = spawn(tsxBin, [this.scriptPath], {
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });

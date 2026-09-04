@@ -18,9 +18,11 @@ const schema = z.object({
   TTL_SWEEP_INTERVAL_MS:  z.coerce.number().default(5000),
   EVICTION_POLICY:        z.enum(["none", "lru", "lfu"]).default("none"),
   EVICTION_THRESHOLD_MB:  z.coerce.number().default(256),
+  EVICTION_SWEEP_INTERVAL_MS: z.coerce.number().default(5000),
   MAX_RETRIES:            z.coerce.number().default(1),
   RETRY_DELAY_MS:         z.coerce.number().default(50),
   LOG_LEVEL:              z.string().default("info"),
+  FORWARD_TIMEOUT_MS:     z.coerce.number().default(1500),
 });
 
 export function loadConfig(): NodeConfig {
@@ -42,8 +44,10 @@ export function loadConfig(): NodeConfig {
     ttlSweepIntervalMs:   env.TTL_SWEEP_INTERVAL_MS,
     evictionPolicy:       env.EVICTION_POLICY,
     evictionThresholdMb:  env.EVICTION_THRESHOLD_MB,
+    evictionSweepIntervalMs: env.EVICTION_SWEEP_INTERVAL_MS,
     maxRetries:           env.MAX_RETRIES,
     retryDelayMs:         env.RETRY_DELAY_MS,
     logLevel:             env.LOG_LEVEL,
+    forwardTimeoutMs:     env.FORWARD_TIMEOUT_MS,
   };
 }

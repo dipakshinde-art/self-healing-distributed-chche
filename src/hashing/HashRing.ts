@@ -11,6 +11,16 @@ export class HashRing {
   }
 
   addNode(entry: MembershipEntry): void {
+    // Idempotent: a node already on the ring just gets its metadata refreshed
+    // (host/port/status/etc. can change across calls) — vnodes are never
+    // re-inserted, or repeated calls (e.g. from both a direct join and a
+    // gossip-driven membership update) would duplicate vnodes and skew that
+    // node's share of the keyspace.
+    if (this.nodeMap.has(entry.nodeId)) {
+      this.nodeMap.set(entry.nodeId, entry);
+      return;
+    }
+
     this.nodeMap.set(entry.nodeId, entry);
 
     for (let i = 0; i < this.vnodeCount; i++) {
