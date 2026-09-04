@@ -55,22 +55,25 @@ export class NodeServer {
       const consistency = normalizeConsistency(req.headers["x-consistency"]);
 
       // ── Client-facing routes — forwarded to the real owner if this node isn't one ──
+      // Every branch below is `await`ed (never a bare `return this.someAsyncFn(...)`)
+      // so a rejection inside it is caught by this function's own try/catch instead
+      // of escaping as an unhandled rejection, which can crash the whole process.
       if (req.method === "GET" && url.pathname.startsWith("/get/")) {
         const key = decodeURIComponent(url.pathname.slice(5));
-        return this.resolveGet(key, res);
+        return await this.resolveGet(key, res);
       }
 
       if (req.method === "POST" && url.pathname === "/set") {
         const body = await readBody(req);
         const { key } = JSON.parse(body);
-        if (typeof key === "string" && this.isOwner(key)) return this.handleSet(body, res, consistency);
-        return this.forwardSet(body, res, consistency);
+        if (typeof key === "string" && this.isOwner(key)) return await this.handleSet(body, res, consistency);
+        return await this.forwardSet(body, res, consistency);
       }
 
       if (req.method === "DELETE" && url.pathname.startsWith("/del/")) {
         const key = decodeURIComponent(url.pathname.slice(5));
         if (this.isOwner(key)) return this.handleDelete(key, res);
-        return this.forwardDelete(key, res);
+        return await this.forwardDelete(key, res);
       }
 
       // ── Internal, non-forwarding routes — always execute locally ────────────────
@@ -83,7 +86,7 @@ export class NodeServer {
 
       if (req.method === "POST" && url.pathname === "/internal/set") {
         const body = await readBody(req);
-        return this.handleSet(body, res, consistency);
+        return await this.handleSet(body, res, consistency);
       }
 
       if (req.method === "DELETE" && url.pathname.startsWith("/internal/del/")) {
